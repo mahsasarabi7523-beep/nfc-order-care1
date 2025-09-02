@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>پیگیری‌های تیم اردر کر — NFC Order Care (single-file)</title>
+<style>
+  :root{--pink:#ff0a7a;--ink:#0f172a;--bg:#f5f7fb;--rail:#e48abb;--soft:rgba(17,24,39,.08);--r-lg:28px;--r-sm:18px}
+  *{box-sizing:border-box;font-family:system-ui,'Segoe UI',Tahoma,Arial,sans-serif}
+  body{margin:0;color:var(--ink);
+       background:radial-gradient(1400px 520px at 50% -160px,#ff4aa0 0%,transparent 60%),
+                  linear-gradient(#fff 0,#fff 160px,var(--bg) 260px)}
+  .brand{position:fixed;top:14px;right:22px;z-index:30;color:#fff;background:linear-gradient(90deg,#ff0a7a,#ff4aa0);
+         padding:10px 16px;border-radius:999px;font-weight:900;font-size:clamp(20px,3.4vw,32px);box-shadow:0 10px 22px rgba(0,0,0,.14)}
+  .controls{position:fixed;top:18px;left:22px;z-index:30;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .selector{background:#fff;border:1px solid #ffe1f0;border-radius:999px;padding:8px 12px;display:flex;gap:10px;align-items:center;box-shadow:0 8px 18px rgba(0,0,0,.06)}
+  .selector label{font-weight:900;color:var(--pink)}
+  .selector select{border:none;outline:none;background:transparent;font-weight:900;color:var(--pink);cursor:pointer}
+  .title-wrap{padding-top:86px;text-align:center;color:#fff;text-shadow:0 4px 18px rgba(0,0,0,.25)}
+  .title{font-weight:900;font-size:clamp(18px,3vw,26px);margin:0}
+  .subtitle{opacity:.95;font-weight:700;margin-top:6px;font-size:clamp(12px,2vw,15px)}
+
+  .wrap{width:100%;margin:16px auto 0}
+  .rail-shell{background:rgba(255,255,255,.82);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.8);
+              border-radius:var(--r-lg);box-shadow:0 14px 36px var(--soft);margin:0 auto;width:min(95vw,2000px);padding:18px;overflow-x:auto}
+  .rail{display:flex;flex-direction:row;align-items:flex-start;gap:18px;min-height:300px;padding-bottom:36px}
+
+  .step{display:flex;flex-direction:column;min-width:280px;max-width:360px;transition:.25s}
+  .step.past{min-width:230px;max-width:260px;opacity:.9}
+  .card{background:#fff;border-radius:var(--r-sm);border:2px solid transparent;box-shadow:0 16px 34px var(--soft)}
+  .card.active{border-color:var(--pink);box-shadow:0 0 0 6px rgba(255,10,122,.12),0 18px 40px rgba(0,0,0,.12)}
+  .card.past{transform:scale(.94)}
+
+  .head{display:flex;align-items:center;gap:12px;padding:16px 16px 10px;cursor:pointer}
+  .icon{width:64px;height:64px;border-radius:16px;background:radial-gradient(circle at 30% 30%,#ffd1ea,#ff9bd0);
+        display:grid;place-items:center;font-size:34px;box-shadow:inset 0 0 0 2px #fff,0 10px 24px rgba(255,10,122,.18)}
+  .kicker{font-size:12px;color:#64748b;margin-bottom:6px;font-weight:800}
+  .h3{margin:0;font-size:16px;line-height:1.7;font-weight:900}
+  .caret{margin-inline-start:auto;opacity:.8;transition:.2s}
+  .step.open .caret{transform:rotate(180deg)}
+  .body{display:none;padding:0 16px 16px}
+  .step.open .body{display:block}
+  .hr{height:1px;background:#f1f5f9;margin:0 16px 12px}
+
+  .opts{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+  .opt{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #ffe0ef;border-radius:14px;padding:12px 14px;
+       box-shadow:0 10px 22px rgba(255,10,122,.10);cursor:pointer;transition:.2s;font-weight:800}
+  .opt:hover{border-color:var(--pink);transform:translateY(-2px);box-shadow:0 12px 26px rgba(255,10,122,.18)}
+  .opt b{color:var(--pink)}
+  .opt small{font-size:12px;color:#475569;margin-right:auto}
+  .opt .arr{margin-right:4px}
+  .arr{display:inline-block;transform:translateY(-1px)}
+
+  .connector{width:90px;position:relative;display:flex;align-items:center;justify-content:center;margin-top:36px}
+  .connector::before{content:"";width:100%;height:3px;background:linear-gradient(270deg,#ffd1ea,var(--rail))}
+  .connector::after{content:"";position:absolute;left:-4px;border-top:7px solid transparent;border-bottom:7px solid transparent;border-right:9px solid var(--rail)}
+
+  .bench{display:flex;justify-content:center;gap:10px;margin:14px auto 30px}
+  .btn{background-image:linear-gradient(to top,#ff0a7a,#ff4aa0);border:none;color:#fff;padding:12px 18px;border-radius:999px;font-weight:900;cursor:pointer}
+  .btn:disabled{background:#cbd5e1}
+  .zoom{display:flex;gap:8px;align-items:center}
+  .zoom input{accent-color:var(--pink)}
+
+  /* پنل محاسباتی */
+  .calc{background:#fff7fb;border:1px solid #ffd6ea;border-radius:14px;padding:12px;margin-top:10px}
+  .calc .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .calc label{font-weight:800;font-size:12px;color:#334155}
+  .calc input{width:100%;padding:10px;border:1px solid #ffd1ea;border-radius:10px;outline:none}
+  .calc .out{margin-top:10px;background:#f8fbff;border:1px solid #dbeafe;border-radius:10px;padding:10px;font-weight:800}
+  .calc .hint{font-size:12px;color:#64748b;margin-top:6px}
+  .calc .actions{display:flex;gap:10px;margin-top:10px;justify-content:flex-start}
+</style>
+</head>
+<body>
+  <div class="brand">پیگیری‌های تیم اردر کر</div>
+
+  <div class="controls">
+    <div class="selector">
+      <label>ریزن/فلو:</label>
+      <select id="reason">
+        <option value="pre_assign">پیش‌فلو: اساین / چک لیبل</option>
+        <option value="address_issue">آدرس مشتری ناقص/اشتباه است</option>
+        <option value="cannot_follow_note">امکان اجرای توضیحات مشتری وجود ندارد</option>
+        <option value="delay">زمان ارسال/آماده‌سازی طولانی‌تر می‌شود</option>
+        <option value="no_show_customer">مشتری برای تحویل مراجعه نکردند</option>
+        <option value="weight_change">تغییر وزن محصول</option>
+        <option value="mismatch">سفارش با مغایرت ارسال شده</option>
+        <option value="no_courier">عدم حضور پیک مجموعه/اکسپرس</option>
+        <option value="ship_fee">تغییر هزینه ارسال سفارش</option>
+        <option value="duplicate">سفارش تکراری است</option>
+        <option value="address_far">آدرس خیلی دور است</option>
+        <option value="sys_issue">سیستم سفارش‌گیری مشکل دارد</option>
+        <option value="busy_weather">شلوغی/آب‌وهوا</option>
+        <option value="only_app">فقط پیش‌غذا</option>
+        <option value="temp_closed">مجموعه موقتا بسته است</option>
+        <option value="tech_issue">مشکل فنی مجموعه</option>
+      </select>
+    </div>
+    <button class="selector" id="resetBtn" type="button">شروع مجدد</button>
+  </div>
+
+  <div class="title-wrap">
+    <h1 class="title" id="mainTitle">انتخاب ریزن/فلو</h1>
+    <div class="subtitle" id="subtitle">نسخهٔ تک‌فایله؛ اگر فونت Snapp لود نشد، ظاهر کمی فرق می‌کند ولی کارکرد کامل است.</div>
+  </div>
+
+  <div class="wrap">
+    <div class="rail-shell"><div id="rail" class="rail" aria-live="polite"></div></div>
+    <div class="bench">
+      <button class="btn" id="prev" type="button">مرحله قبل</button>
+      <div class="zoom"><span style="color:#fff">بزرگ‌نمایی</span>
+        <input id="zoom" type="range" min="80" max="140" value="100">
+      </div>
+    </div>
+  </div>
+
+<script>
+const ARROW='⟵';
+
+/* ——— Flows (مهم: همهٔ کلیدها وجود دارند تا مشکلی در باز شدن نباشد) ——— */
+
+/* 0) Pre-assign */
+const FLOW_PRE_ASSIGN={start:{id:'start',text:'فاکتور اساین شد',icon:'🕒',next:'label_check'},
+label_check:{id:'label_check',text:'چک لیبل فاکتور',icon:'✅',branches:[
+{label:'بدون لیبل (۵ سفارش اخیر را چک کن)',target:'no_label_recent'},
+{label:'ثبت سفارش',target:'registered_label'},
+{label:'نیازمند تماس',target:'need_contact_label'}]},
+no_label_recent:{id:'no_label_recent',text:'۵ سفارش اخیر – وضعیت کدام است؟',icon:'✅',branches:[
+{label:'ارسال برای رستوران (ثبت سفارش)',target:'recent_sent'},
+{label:'رسیده به دست رستوران (VMS Delay)',target:'recent_vms'},
+{label:'بدست رستوران نرسیده (مثل ثبت سفارش)',target:'recent_not_reached'}]},
+recent_sent:{id:'recent_sent',text:'مثل ثبت سفارش → مسیر «ثبت سفارش»',icon:'🏷️',next:'registered_label'},
+recent_not_reached:{id:'recent_not_reached',text:'مثل ثبت سفارش → مسیر «ثبت سفارش»',icon:'🏷️',next:'registered_label'},
+recent_vms:{id:'recent_vms',text:'VMS Delay → تماس با مجموعه',icon:'🏪',branches:[
+{label:'مشکل دارد → طبق ریزن‌های نیازمند تماس پیگیری',target:'go_reasons'},
+{label:'مشکل ندارد',target:'end'}]},
+registered_label:{id:'registered_label',text:'لیبل ثبت سفارش',icon:'🏷️',branches:[
+{label:'بازخوانی/تازه‌سازی/بستن و بازکردن/بررسی وضعیت',target:'refresh_steps'},
+{label:'اگر نیازمند تماس شد → علت را بپرس',target:'need_contact_label'}]},
+refresh_steps:{id:'refresh_steps',text:'روش‌های بازیابی سفارش در برنامه',icon:'✅',next:'end'},
+need_contact_label:{id:'need_contact_label',text:'لیبل نیازمند تماس → علت را دریافت کن',icon:'❓',next:'go_reasons'},
+go_reasons:{id:'go_reasons',text:'رفتن به ریزن‌ها',icon:'✅',next:'end'},
+end:{id:'end',text:'پایان',icon:'🏁'}};
+
+/* 1) Address issue */
+const FLOW_ADDRESS_ISSUE={start:{id:'start',text:'آدرس مشتری ناقص یا اشتباه وارد شده است',icon:'⚠️',next:'pay_type'},
+pay_type:{id:'pay_type',text:'نوع پرداخت را چک کن',icon:'✅',branches:[
+{label:'غیرنقدی (آنلاین)',target:'label_online'},
+{label:'نقدی',target:'issue_cash'}]},
+label_online:{id:'label_online',text:'لیبل سفارش چیست؟',icon:'✅',branches:[
+{label:'نیازمند تماس',target:'online_call_nc'},
+{label:'تأیید شده نیازمند تماس',target:'online_call_approved'}]},
+online_call_nc:{id:'online_call_nc',text:'تماس با مشتری (نیازمند تماس)',icon:'☎️',branches:[
+{label:'پاسخگو نیست → لغو سفارش',target:'online_nc_no_answer_cancel'},
+{label:'پاسخگو است → دریافت آدرس دقیق',target:'online_get_address'}]},
+online_nc_no_answer_cancel:{id:'online_nc_no_answer_cancel',text:'عدم پاسخگویی → لغو سفارش',icon:'⛔',next:'end'},
+online_call_approved:{id:'online_call_approved',text:'تماس با مشتری (تأیید شده نیازمند تماس)',icon:'☎️',branches:[
+{label:'پاسخگو نیست',target:'check_vendor_cancel'},
+{label:'پاسخگو است → دریافت آدرس دقیق',target:'online_get_address'}]},
+check_vendor_cancel:{id:'check_vendor_cancel',text:'استعلام امکان کنسلی از مجموعه',icon:'🏪',branches:[
+{label:'تأیید → کنسلی',target:'online_cancel'},
+{label:'عدم تأیید → نگهداری تا پیگیری مشتری',target:'hold_at_vendor'}]},
+online_cancel:{id:'online_cancel',text:'لغو سفارش (با تایید مجموعه)',icon:'⛔',next:'end'},
+hold_at_vendor:{id:'hold_at_vendor',text:'نگهداری سفارش در مجموعه تا پیگیری مشتری',icon:'🏪',next:'end'},
+online_get_address:{id:'online_get_address',text:'گرفتن آدرس دقیق و ثبت در توضیحات اسنپ‌فود',icon:'🖊️',next:'profile_fix'},
+issue_cash:{id:'issue_cash',text:'نوع مشکل آدرس (سفارش نقدی)',icon:'❓',branches:[
+{label:'آدرس ناقص (پلاک/واحد/کروکی…)',target:'cash_call_record'},
+{label:'مکان عمومی',target:'cancel_public_place'}]},
+cash_call_record:{id:'cash_call_record',text:'تماس با مشتری و ثبت آدرس در توضیحات اسنپ‌فود',icon:'☎️',next:'profile_fix'},
+cancel_public_place:{id:'cancel_public_place',text:'مکان عمومی → پروسه کنسلی + تماس با مشتری',icon:'🤖',next:'end'},
+profile_fix:{id:'profile_fix',text:'تکمیل نام/نام‌خانوادگی و ثبت موبایل در «شماره تلفن» پروفایل',icon:'🖊️',next:'end'},
+end:{id:'end',text:'پایان',icon:'🏁'}};
+
+/* 2) Cannot follow note */
+const FLOW_CANNOT_NOTE={start:{id:'start',text:'امکان اجرای توضیحات مشتری وجود ندارد',icon:'⚠️',next:'vendor_told'},
+vendor_told:{id:'vendor_told',text:'آیا مجموعه مشکل را اعلام کرده؟',icon:'✅',branches:[
+{label:'خیر، تماس با مجموعه',target:'call_vendor'},
+{label:'بله، ادامه با مشتری',target:'cust_choice'}]},
+call_vendor:{id:'call_vendor',text:'تماس با مجموعه جهت بررسی',icon:'🏪',next:'cust_choice'},
+cust_choice:{id:'cust_choice',text:'تماس با مشتری و تصمیم',icon:'☎️',branches:[
+{label:'بدون توضیحات ارسال شود',target:'send_wo'},
+{label:'هزینه دارد و مشتری می‌پذیرد',target:'delta'},
+{label:'نمی‌پذیرد و کنسلی می‌خواهد',target:'cancel'}]},
+send_wo:{id:'send_wo',text:'ثبت متن در توضیحات سفارش + ارسال اصلاحیه',icon:'🧾',next:'end'},
+delta:{id:'delta',text:'پروسه دلتا',icon:'🧾',next:'end'},
+cancel:{id:'cancel',text:'پروسه کنسلی',icon:'⛔',next:'end'},
+end:{id:'end',text:'پایان',icon:'🏁'}};
+
+/* 3) Delay (with calculator in approved-need-contact) */
+const FLOW_DELAY={start:{id:'start',text:'زمان ارسال/آماده‌سازی طولانی‌تر می‌شود',icon:'🕒',next:'label_kind'},
+label_kind:{id:'label_kind',text:'نوع لیبل چیست؟',icon:'✅',branches:[
+{label:'نیازمند تماس (معمولی)',target:'courier'},
+{label:'تأیید شده نیازمند تماس (با محاسبهٔ زمان)',target:'calc_delay'}]},
+courier:{id:'courier',text:'نوع پیک؟',icon:'🚚',branches:[
+{label:'اکسپرس',target:'exp_time'},
+{label:'پیک رستوران',target:'res_time'}]},
+exp_time:{id:'exp_time',text:'زمان درخواستی (اکسپرس)',icon:'⏱️',branches:[
+{label:'۰–۴۰ → اصلاح فاکتور',target:'invoice'},
+{label:'۴۰–۱۲۰ → تماس با مشتری',target:'call'},
+{label:'۱۲۰+ → اتوکال کنسلی',target:'autocancel'}]},
+res_time:{id:'res_time',text:'زمان درخواستی (رستوران)',icon:'⏱️',branches:[
+{label:'۰–۷۰ → اصلاح فاکتور',target:'invoice'},
+{label:'۷۰–۱۲۰ → تماس با مشتری',target:'call'},
+{label:'۱۲۰+ → اتوکال کنسلی',target:'autocancel'}]},
+calc_delay:{id:'calc_delay',text:'محاسبه و اعلام زمان نهایی به مشتری',icon:'⏱️'},
+approved_call_vendor:{id:'approved_call_vendor',text:'(عبور از زمان اصلی) تماس با مشتری و اعلام دقیقاً «زمان درخواستی مجموعه»',icon:'☎️',next:'end'},
+approved_call_customer:{id:'approved_call_customer',text:'(عبور نکرده) تماس با مشتری و اعلام «زمان نهایی محاسبه‌شدهٔ سیستم»',icon:'☎️',next:'end'},
+call:{id:'call',text:'تماس با مشتری',icon:'👤',next:'end'},
+invoice:{id:'invoice',text:'اصلاح فاکتور',icon:'🧾',next:'end'},
+autocancel:{id:'autocancel',text:'اتوکال کنسلی',icon:'🤖',next:'end'},
+end:{id:'end',text:'پایان',icon:'🏁'}};
+
+/* 4) No-show customer */
+const FLOW_NO_SHOW={start:{id:'start',text:'مشتری برای تحویل مراجعه نکردند',icon:'⚠️',next:'call'},
+call:{id:'call',text:'تماس با مشتری',icon:'☎️',branches:[
+{label:'پاسخگو نیست → تماس با مجموعه و ارسال اصلاحیه',target:'call_vendor'},
+{label:'می‌پذیرد → ثبت مورد و اصلاحیه',target:'accept'},
+{label:'نمی‌پذیرد → تلاش برای حضوری',target:'convince'}]},
+call_vendor:{id:'call_vendor',text:'تماس با مجموعه و ارسال اصلاحیه',icon:'🏪',next:'end'},
+accept:{id:'accept',text:'ثبت مورد اعلامی مشتری + ارسال اصلاحیه',icon:'🖊️',next:'end'},
+convince:{id:'convince',text:'متقاعدسازی تحویل حضوری',icon:'👤',next:'end'},
+end:{id:'end',text:'پایان',icon:'🏁'}};
+
+/* 5) Weight change */
+const FLOW_WEIGHT={start:{id:'start',text:'تغییر وزن محصول',icon:'🏷️',next:'desc'},
+desc:{id:'desc',text:'توضیحات مجموعه کامل است؟',icon:'✅',branches:[
+{label:'کامل است',target:'check'},
+{label:'ناقص است → تماس با مجموعه',target:'check'}]},
+check:{id:'check',text:'چک قیمت و وزن',icon:'⚖️',branches:[
+{label:'کمتر می‌شود → تماس با مشتری',target:'less'},
+{label:'بیشتر می‌شود → تماس با مشتری',target:'more'}]},
+less:{id:'less',text:'پاسخ مشتری؟',icon:'⚖️',branches:[
+{label:'مورد تأیید هست → ثبت در توضیحات',target:'log'},
+{label:'مورد تأیید نیست → کنسلی',target:'cancel'}]},
+more:{id:'more',text:'پاسخ مشتری؟',icon:'⚖️',branches:[
+{label:'مورد تأیید هست → دلتا',target:'delta'},
+{label:'مورد تأیید نیست → کنسلی',target:'cancel'}]},
+log:{id:'log',text:'ثبت در توضیحات اسنپ‌فود',icon:'🖊️',next:'end'},
+delta:{id:'delta',text:'پروسه دلتا',icon:'🧾',next:'end'},
+cancel:{id:'cancel',text:'پروسه کنسلی',icon:'⛔',next:'end'},
+end:{id:'end',text:'پایان',icon:'🏁'}};
+
+/* 6) Mismatch */
+const FLOW_MISMATCH={start:{id:'start',text:'سفارش با مغایرت ارسال شده',icon:'⚠️',next:'courier'},
+courier:{id:'courier',text:'پیک سفارش چیست؟',icon:'🚚',branches:[
+{label:'اکسپرس / اکسپرس پلاس',target:'vendor_desc'},
+{label:'پیک مجموعه',target:'vendor_courier'}]},
+vendor_desc:{id:'vendor_desc',text:'توضیحات مجموعه کامل است؟',icon:'✅',branches:[
+{label:'کامل → ثبت تیکت + ثبت متن + ارسال اصلاحیه',target:'ticket_send'},
+{label:'ناقص → تماس با مجموعه → ثبت تیکت + ثبت متن + ارسال اصلاحیه',target:'call_then_ticket'}]},
+ticket_send:{id:'ticket_send',text:'ثبت تیکت + ثبت توضیحات + ارسال اصلاحیه',icon:'🧾',next:'end'},
+call_then_ticket:{id:'call_then_ticket',text:'تماس با مجموعه → ثبت تیکت + ثبت توضیحات + ارسال اصلاحیه',icon:'🏪',next:'end'},
+vendor_courier:{id:'vendor_courier',text:'تماس با مشتری و تصمیم',icon:'☎️',branches:[
+{label:'اصلاح (عودت مابه‌التفاوت به کیف پول)',target:'adjust_wallet'},
+{label:'لغو سفارش',target:'cancel'},
+{label:'ارسال صحیح سفارش',target:'correct_flow'}]},
+adjust_wallet:{id:'adjust_wallet',text:'اصلاح فاکتور + عودت مابه‌التفاوت',icon:'🧾',next:'end'},
+correct_flow:{id:'correct_flow',text:'استعلام موجودی از مجموعه',icon:'🏪',branches:[
+{label:'موجود → ارسال و اطلاع به مشتری',target:'send_and_inform'},
+{label:'ناموجود → تماس با مشتری و اصلاح/کنسلی',target:'call_modify_or_cancel'}]},
+send_and_inform:{id:'send_and_inform',text:'ارسال صحیح و اطلاع‌رسانی',icon:'✉️',next:'end'},
+call_modify_or_cancel:{id:'call_modify_or_cancel',text:'تماس با مشتری → اصلاح یا کنسلی',icon:'☎️',next:'end'},
+end:{id:'end',text:'پایان',icon:'🏁'}};
+
+/* 7) No courier */
+const FLOW_NO_COURIER={start:{id:'start',text:'عدم حضور پیک مجموعه / اکسپرس',icon:'⚠️',next:'courier'},
+courier:{id:'courier',text:'پیک سفارش؟',icon:'🚚',branches:[
+{label:'پیک مجموعه',target:'vendor_absent'},
+{label:'اکسپرس / اکسپرس پلاس',target:'express_absent'}]},
+vendor_absent:{id:'vendor_absent',text:'اتوکال کنسلی (عدم حضور پیک مجموعه)',icon:'🤖',next:'end'},
+express_absent:{id:'express_absent',text:'آرشیو تاخیرها را چک کن',icon:'✅',branches:[
+{label:'هایپر دیلی نیست → ثبت توضیح + اصلاحیه',target:'note_fix'},
+{label:'هایپر دیلی است',target:'hyper_call_vendor'}]},
+note_fix:{id:'note_fix',text:'ثبت متن در توضیحات + ارسال اصلاحیه',icon:'🧾',next:'end'},
+hyper_call_vendor:{id:'hyper_call_vendor',text:'تماس با مجموعه: با پیک خودشان می‌فرستند؟',icon:'🏪',branches:[
+{label:'بله → تغییر به پیک مجموعه + ارسال اصلاحیه',target:'switch_vendor_send'},
+{label:'خیر → درخواست کنسلی؟',target:'ask_cancel'}]},
+switch_vendor_send:{id:'switch_vendor_send',text:'تغییر به پیک مجموعه + ارسال اصلاحیه',icon:'🧾',next:'end'},
+ask_cancel:{id:'ask_cancel',text:'اگر بله → تماس با مشتری و کنسلی / اگر نه → اطلاع برای صبوری',icon:'☎️',next:'end'},
+end:{id:'end',text:'پایان',icon:'🏁'}};
+
+/* 8) Ship fee */
+const FLOW_SHIP_FEE={start:{id:'start',text:'تغییر هزینه ارسال سفارش',icon:'🏷️',next:'is_lower'},
+is_lower:{id:'is_lower',text:'هزینه ارسال کمتر شده؟',icon:'❓',branches:[
+{label:'بله → اصلاح هزینه و ارسال اصلاحیه',target:'lower_fix'},
+{label:'خیر (بیشتر شده)',target:'who_fault'}]},
+lower_fix:{id:'lower_fix',text:'اصلاح هزینه ارسال + ارسال اصلاحیه',icon:'🧾',next:'end'},
+who_fault:{id:'who_fault',text:'خطا از سمت چه کسی است؟',icon:'✅',branches:[
+{label:'مشتری → دلتا',target:'delta'},
+{label:'مجموعه/اسنپ‌فود → اقناع/پیگیری',target:'convince'}]},
+delta:{id:'delta',text:'دلتا (پرداخت/دریافت مابه‌التفاوت)',icon:'🧾',next:'end'},
+convince:{id:'convince',text:'اگر قانع نشدند: زیردلایل خسارت/ارجاع به سرگروه',icon:'❓',next:'end'},
+end:{id:'end',text:'پایان',icon:'🏁'}};
+
+/* 9) Duplicate */
+const FLOW_DUPLICATE={start:{id:'start',text:'سفارش تکراری است',icon:'⚠️',next:'promo'},
+promo:{id:'promo',text:'سفارش با کد تخفیف ثبت شده؟',icon:'❓',branches:[
+{label:'بله',target:'call_vendor_block'},
+{label:'خیر',target:'check_log'}]},
+call_vendor_block:{id:'call_vendor_block',text:'تماس با مجموعه و اعلام عدم آماده‌سازی + ارسال به سرگروه',icon:'🏪',next:'end'},
+check_log:{id:'check_log',text:'ثبت تماس را برای تکراری بودن چک کن',icon:'✅',branches:[
+{label:'تکراری نیست → ثبت «تکراری نیست»',target:'not_dup_note'},
+{label:'تکراری است → تماس با مشتری',target:'call_customer'}]},
+not_dup_note:{id:'not_dup_note',text:'ثبت «تکراری نیست» در توضیحات اسنپ‌فود',icon:'🖊️',next:'end'},
+call_customer:{id:'call_customer',text:'تماس با مشتری',icon:'☎️',branches:[
+{label:'هر دو سفارش را می‌خواهد → ثبت',target:'both_note'},
+{label:'اشتباه شده → کنسلی',target:'cancel'}]},
+both_note:{id:'both_note',text:'ثبت خواست مشتری (هر دو) در توضیحات',icon:'🖊️',next:'end'},
+cancel:{id:'cancel',text:'پروسه کنسلی',icon:'⛔',next:'end'},
+end:{id:'end',text:'پایان',icon:'🏁'}};
+
+/* 10) Address far */
+const FLOW_ADDRESS_FAR={start:{id:'start',text:'آدرس خیلی دور است',icon:'⚠️',next:'label'},
+label:{id:'label',text:'لیبل سفارش را چک کن',icon:'✅',branches:[
+{label:'نیازمند تماس → اتوکال کنسلی',target:'autocancel'},
+{label:'تأیید شده نیازمند تماس',target:'approved'}]},
+autocancel:{id:'autocancel',text:'اتوکال کنسلی',icon:'🤖',next:'end'},
+approved:{id:'approved',text:'تماس با مجموعه: با مبلغ بیشتر انجام می‌دهند؟',icon:'🏪',branches:[
+{label:'بله → تماس با مشتری و دلتا',target:'delta_call'},
+{label:'خیر → پیشنهاد تحویل حضوری',target:'pickup_offer'}]},
+delta_call:{id:'delta_call',text:'تماس با مشتری و دریافت مبلغ اضافی (دلتا)',icon:'☎️',next:'end'},
+pickup_offer:{id:'pickup_offer',text:'تماس با مشتری و پیشنهاد تحویل حضوری',icon:'☎️',next:'end'},
+end:{id:'end',text:'پایان',icon:'🏁'}};
+
+/* 11..15) سیستم/شلوغی/فقط پیش‌غذا/موقتا بسته/مشکل فنی */
+const FLOW_SYS_ISSUE={start:{id:'start',text:'سیستم سفارش‌گیری مشکل دارد',icon:'⚠️',next:'call_vendor'},
+call_vendor:{id:'call_vendor',text:'تماس با مجموعه و پیگیری طبق درخواست',icon:'🏪',next:'end'},
+end:{id:'end',text:'پایان',icon:'🏁'}};
+const FLOW_BUSY_WEATHER={start:{id:'start',text:'به دلیل شلوغی / آب‌وهوا امکان ارسال نیست',icon:'⚠️',next:'autocancel'},
+autocancel:{id:'autocancel',text:'اتوکال کنسلی',icon:'🤖',next:'end'},
+end:{id:'end',text:'پایان',icon:'🏁'}};
+const FLOW_ONLY_APP={start:{id:'start',text:'مشتری فقط پیش‌غذا سفارش داده',icon:'⚠️',next:'check_items'},
+check_items:{id:'check_items',text:'«برنج» یا «سالاد سزار» دارد؟',icon:'❓',branches:[
+{label:'بله → تماس با مجموعه',target:'call_vendor'},
+{label:'خیر → اتوکال کنسلی',target:'autocancel'}]},
+call_vendor:{id:'call_vendor',text:'تماس با مجموعه (اسکریپت)',icon:'🏪',next:'end'},
+autocancel:{id:'autocancel',text:'اتوکال کنسلی',icon:'🤖',next:'end'},
+end:{id:'end',text:'پایان',icon:'🏁'}};
+const FLOW_TEMP_CLOSED={start:{id:'start',text:'مجموعه موقتاً بسته است',icon:'⚠️',next:'autocancel'},
+autocancel:{id:'autocancel',text:'اتوکال کنسلی',icon:'🤖',next:'end'},
+end:{id:'end',text:'پایان',icon:'🏁'}};
+const FLOW_TECH_ISSUE={start:{id:'start',text:'مشکل فنی مجموعه (برق/گاز/…)',icon:'⚠️',next:'autocancel'},
+autocancel:{id:'autocancel',text:'اتوکال کنسلی',icon:'🤖',next:'end'},
+end:{id:'end',text:'پایان',icon:'🏁'}};
+
+/* Map */
+const FLOWS={
+  pre_assign:{title:'پیش‌فلو: اساین / چک لیبل',flow:FLOW_PRE_ASSIGN},
+  address_issue:{title:'آدرس مشتری ناقص/اشتباه است',flow:FLOW_ADDRESS_ISSUE},
+  cannot_follow_note:{title:'امکان اجرای توضیحات مشتری وجود ندارد',flow:FLOW_CANNOT_NOTE},
+  delay:{title:'زمان ارسال/آماده‌سازی طولانی‌تر می‌شود',flow:FLOW_DELAY},
+  no_show_customer:{title:'مشتری برای تحویل مراجعه نکردند',flow:FLOW_NO_SHOW},
+  weight_change:{title:'تغییر وزن محصول',flow:FLOW_WEIGHT},
+  mismatch:{title:'سفارش با مغایرت ارسال شده',flow:FLOW_MISMATCH},
+  no_courier:{title:'عدم حضور پیک مجموعه/اکسپرس',flow:FLOW_NO_COURIER},
+  ship_fee:{title:'تغییر هزینه ارسال سفارش',flow:FLOW_SHIP_FEE},
+  duplicate:{title:'سفارش تکراری است',flow:FLOW_DUPLICATE},
+  address_far:{title:'آدرس خیلی دور است',flow:FLOW_ADDRESS_FAR},
+  sys_issue:{title:'سیستم سفارش‌گیری مشکل دارد',flow:FLOW_SYS_ISSUE},
+  busy_weather:{title:'شلوغی/آب‌وهوا',flow:FLOW_BUSY_WEATHER},
+  only_app:{title:'فقط پیش‌غذا',flow:FLOW_ONLY_APP},
+  temp_closed:{title:'مجموعه موقتا بسته است',flow:FLOW_TEMP_CLOSED},
+  tech_issue:{title:'مشکل فنی مجموعه',flow:FLOW_TECH_ISSUE}
+};
+</script>
+
+<script>
+/* ——— Renderer & calculator logic ——— */
+const rail=document.getElementById('rail');
+const reasonSel=document.getElementById('reason');
+const prevBtn=document.getElementById('prev');
+const resetBtn=document.getElementById('resetBtn');
+const titleEl=document.getElementById('mainTitle');
+const subtitleEl=document.getElementById('subtitle');
+let ACTIVE=null; const trail=[];
+
+function byId(id){ return ACTIVE[id]; }
+function toMin(hhmm){ if(!hhmm) return NaN; const parts=hhmm.split(':'); if(parts.length<2) return NaN; const h=+parts[0], m=+parts[1]; if(isNaN(h)||isNaN(m)) return NaN; return h*60+m; }
+
+window.__calcCompute = function(idx){
+  const c = document.getElementById('calc-'+idx);
+  if(!c) return;
+  const tConfirm = toMin(c.querySelector('.t-confirm').value);
+  const tAssign  = toMin(c.querySelector('.t-assign').value);
+  const tMain    = parseInt(c.querySelector('.t-main').value,10);
+  const tVendor  = parseInt(c.querySelector('.t-vendor').value,10);
+  const out = c.querySelector('.out');
+  const goBtn = c.querySelector('.goBtn');
+  if([tConfirm,tAssign,tMain,tVendor].some(x=>isNaN(x))){
+    out.textContent = 'ورودی نادرست است. همه فیلدها را کامل کنید.'; goBtn.disabled=true; return;
+  }
+  let elapsed = tAssign - tConfirm;
+  if(elapsed<0) elapsed += 24*60; // عبور از نیمه‌شب
+  if(elapsed > tMain){
+    out.textContent = '✅ عبور از زمان اصلی. مسیر: «اعلام دقیقاً زمان درخواستی مجموعه به مشتری». زمان اعلامی: '+tVendor+' دقیقه.';
+    goBtn.dataset.target = 'approved_call_vendor';
+    goBtn.disabled=false;
+  } else {
+    const finalMin = (tMain - elapsed) + tVendor;
+    out.textContent = '✅ عبور نکرده. زمان نهایی اعلام به مشتری: '+finalMin+' دقیقه.';
+    goBtn.dataset.target = 'approved_call_customer';
+    goBtn.dataset.final = finalMin;
+    goBtn.disabled=false;
+  }
+};
+window.__calcProceed = function(idx){
+  const c = document.getElementById('calc-'+idx);
+  const target = (c.querySelector('.goBtn').dataset.target)||'approved_call_customer';
+  go(target, idx);
+};
+
+function makeStep(entry,i,isCurrent){
+  const s=byId(entry.id);
+  const step=document.createElement('div');
+  step.className='step'+(i<trail.length-1?' past':'')+(i===trail.length-1?' open':'');
+  const card=document.createElement('div');card.className='card'+(isCurrent?' active':'')+(i<trail.length-1?' past':'');
+  const head=document.createElement('div'); head.className='head';
+  head.innerHTML=`<div class="icon">${s.icon||'🔷'}</div>
+  <div><div class="kicker">مرحله ${i+1}</div><h3 class="h3">${s.text}</h3></div><span class="caret">⌄</span>`;
+  head.addEventListener('click',()=>step.classList.toggle('open'));
+  card.appendChild(head);
+
+  const body=document.createElement('div'); body.className='body';
+  body.appendChild(Object.assign(document.createElement('div'),{className:'hr'}));
+
+  if(s.id==='calc_delay'){
+    const c=document.createElement('div'); c.className='calc'; c.id='calc-'+i;
+    c.innerHTML=`
+      <div class="row">
+        <div><label>زمان تأیید فاکتور (HH:MM)</label><input class="t-confirm" type="time" required></div>
+        <div><label>زمان اساین/سیستم (HH:MM)</label><input class="t-assign" type="time" required></div>
+      </div>
+      <div class="row">
+        <div><label>زمان اصلی فاکتور/ارسال (دقیقه)</label><input class="t-main" type="number" min="0" step="1" placeholder="مثلاً 60"></div>
+        <div><label>زمان درخواستی مجموعه (دقیقه)</label><input class="t-vendor" type="number" min="0" step="1" placeholder="مثلاً 30"></div>
+      </div>
+      <div class="actions">
+        <button class="btn" type="button" onclick="__calcCompute(${i})">محاسبه</button>
+        <button class="btn goBtn" type="button" disabled onclick="__calcProceed(${i})">ادامه</button>
+      </div>
+      <div class="out">نتیجهٔ محاسبه اینجا نمایش داده می‌شود.</div>
+      <div class="hint">اگر (اساین − تأیید) > «زمان اصلی»، دقیقاً «زمان درخواستی مجموعه» اعلام می‌شود. وگرنه: «(زمان اصلی − فاصله تایید تا اساین) + زمان درخواستی مجموعه» اعلام می‌شود.</div>
+    `;
+    body.appendChild(c);
+  } else if(s.branches){
+    const opts=document.createElement('div'); opts.className='opts';
+    s.branches.forEach(b=>{
+      const o=document.createElement('div'); o.className='opt';
+      o.innerHTML=`<b>${b.label}</b><small>انتخاب <span class="arr">${ARROW}</span></small>`;
+      o.addEventListener('click',()=>go(b.target,i));
+      opts.appendChild(o);
+    });
+    body.appendChild(opts);
+  } else if(s.next){
+    const btn=document.createElement('button'); btn.className='opt';
+    btn.innerHTML=`<b>ادامه</b><small>Continue <span class="arr">${ARROW}</span></small>`;
+    btn.addEventListener('click',()=>go(s.next,i));
+    body.appendChild(btn);
+  }
+
+  card.appendChild(body); step.appendChild(card); return step;
+}
+
+function render(){
+  rail.innerHTML='';
+  trail.forEach((e,i)=>{
+    rail.appendChild(makeStep(e,i,i===trail.length-1));
+    if(i<trail.length-1){
+      const c=document.createElement('div'); c.className='connector'; rail.appendChild(c);
+    }
+  });
+  prevBtn.disabled = trail.length<=1;
+  // اسکرول به راست (شروع) که مرحلهٔ جدید سمت راست دیده شود
+  rail.parentElement.scrollTo({left:0,behavior:'smooth'});
+}
+
+function go(target,fromIndex){ trail.splice(fromIndex+1); trail.push({id:target}); render(); }
+
+function initFlow(key){
+  const cfg=FLOWS[key];
+  if(!cfg){ console.warn('Flow not found', key); return; }
+  ACTIVE=cfg.flow;
+  titleEl.textContent=cfg.title;
+  subtitleEl.textContent='«'+cfg.title+'»';
+  trail.length=0;
+  trail.push({id:'start'});
+  const n=ACTIVE.start && ACTIVE.start.next;
+  if(n) trail.push({id:n});
+  render();
+}
+
+/* hooks */
+reasonSel.addEventListener('change',e=>initFlow(e.target.value));
+prevBtn.addEventListener('click',()=>{ if(trail.length>1){ trail.pop(); render(); }});
+resetBtn.addEventListener('click',()=>initFlow(reasonSel.value));
+document.getElementById('zoom').addEventListener('input',e=>{
+  const v=e.target.value; rail.style.transform=`scale(${v/100})`; rail.style.transformOrigin='center left';
+});
+
+/* boot */
+initFlow(reasonSel.value);
+</script>
+</body>
+</html>
